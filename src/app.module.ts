@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { CategoriesModule } from './categories/categories.module';
 import { CreatorsModule } from './creators/creators.module';
 import { FansModule } from './fans/fans.module';
 import { TiersModule } from './tiers/tiers.module';
@@ -14,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
+    CategoriesModule,
     CreatorsModule,
     FansModule,
     TiersModule,

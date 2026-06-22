@@ -15,11 +15,20 @@ export class CreatorsService {
    * @param limit The maximum number of creators per page.
    * @returns An object containing the list of creators, total count, page, and limit.
    */
-  async findAll(page: number, limit: number) {
+  async findAll(page: number, limit: number, categorySlug?: string) {
     const skip = (page - 1) * limit;
+    const where = categorySlug
+      ? { categories: { some: { category: { slug: categorySlug } } } }
+      : undefined;
     const [creators, total] = await Promise.all([
-      this.prisma.creator.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      this.prisma.creator.count(),
+      this.prisma.creator.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { categories: { include: { category: true } } },
+      }),
+      this.prisma.creator.count({ where }),
     ]);
     return { data: creators, total, page, limit };
   }

@@ -51,7 +51,27 @@ model Creator {
   tiers          Tier[]
   passes         Pass[]
   webhooks       WebhookConfig[]
+  categories     CategoryOnCreator[]
   @@map("creators")
+}
+
+model Category {
+  id        String              @id @default(uuid())
+  name      String              @unique
+  slug      String              @unique
+  createdAt DateTime            @default(now()) @map("created_at")
+  creators  CategoryOnCreator[]
+  @@map("categories")
+}
+
+model CategoryOnCreator {
+  creatorId  String   @map("creator_id")
+  categoryId String   @map("category_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([creatorId, categoryId])
+  @@map("category_on_creator")
 }
 
 model WebhookConfig {

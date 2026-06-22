@@ -18,12 +18,17 @@ export class CreatorsController {
 
   @Get()
   @ApiOperation({ summary: 'List all creators' })
+  @ApiQuery({ name: 'category', required: false, description: 'Filter by category slug (e.g. music, gaming)' })
   @ApiResponse({ status: 200, description: 'Return paginated list of creators' })
-  findAll(@Query('page') page = 1, @Query('limit') limit = 20) {
+  findAll(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('category') category?: string,
+  ) {
     if (+limit > 50) {
       throw new BadRequestException('Limit cannot exceed 50');
     }
-    return this.creatorsService.findAll(+page, +limit);
+    return this.creatorsService.findAll(+page, +limit, category);
   }
 
   @Get(':address')

@@ -32,16 +32,17 @@ export class HealthController {
   }
 
   @Get('deep')
-  @ApiOperation({ summary: 'Deep health check for all dependencies' })
+  @ApiOperation({ summary: 'Deep health check — includes DB latency and slow query count' })
   @ApiResponse({ status: 200, description: 'All dependencies are healthy' })
   @ApiResponse({ status: 503, description: 'One or more dependencies are unhealthy' })
   async getDeepHealth() {
     let databaseStatus = 'up';
+    let dbLatencyMs: number | null = null;
     let stellarStatus = 'up';
     let hasError = false;
 
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      dbLatencyMs = await this.prisma.measureQueryLatency();
     } catch (error) {
       databaseStatus = 'down';
       hasError = true;
@@ -57,8 +58,12 @@ export class HealthController {
     const response = {
       status: hasError ? 'error' : 'ok',
       dependencies: {
-        database: databaseStatus,
-        stellar: stellarStatus,
+        database: {
+          status: databaseStatus,
+          latencyMs: dbLatencyMs,
+          slowQueryCount: this.prisma.getSlowQueryCount(),
+        },
+        stellar: { status: stellarStatus },
       },
     };
 

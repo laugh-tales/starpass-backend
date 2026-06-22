@@ -258,6 +258,37 @@ export class PassesService {
   }
 
   /**
+   * Get NFT-compatible metadata for a pass (public, no auth required)
+   */
+  async getNftMetadata(passId: string) {
+    const pass = await this.prisma.pass.findUnique({
+      where: { id: passId },
+      include: { tier: true, creator: true },
+    });
+    if (!pass) throw new NotFoundException('Pass not found');
+
+    const now = new Date();
+    const status = !pass.active ? 'inactive' : pass.expiresAt <= now ? 'expired' : 'active';
+
+    return {
+      name: `${pass.creator.displayName} — ${pass.tier.name}`,
+      description:
+        pass.tier.description ??
+        `Access pass for ${pass.creator.displayName}'s ${pass.tier.name} tier`,
+      image: pass.creator.avatarUrl ?? '',
+      attributes: [
+        { trait_type: 'Tier', value: pass.tier.name },
+        { trait_type: 'Creator', value: pass.creator.displayName },
+        { trait_type: 'Creator Address', value: pass.creator.stellarAddress },
+        { trait_type: 'Purchased At', value: pass.purchasedAt.toISOString() },
+        { trait_type: 'Expires At', value: pass.expiresAt.toISOString() },
+        { trait_type: 'Status', value: status },
+        { trait_type: 'On-Chain ID', value: pass.onChainId.toString() },
+      ],
+    };
+  }
+
+  /**
    * Find all passes with filtering and pagination
    */
   async findAll(filters: ListPassesDto) {

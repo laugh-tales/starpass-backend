@@ -116,6 +116,24 @@ model Pass {
   @@map("passes")
 }
 
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String       @map("reporter_id")
+  targetType String       @map("target_type")
+  targetId   String       @map("target_id")
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  @@map("reports")
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
 model IndexerCheckpoint {
   id         String   @id @default("singleton")
   lastLedger Int      @default(0) @map("last_ledger")

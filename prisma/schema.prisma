@@ -51,6 +51,7 @@ model Creator {
   tiers          Tier[]
   passes         Pass[]
   webhooks       WebhookConfig[]
+  blocks         Block[]
   @@map("creators")
 }
 
@@ -114,6 +115,17 @@ model Pass {
   creator     Creator  @relation(fields: [creatorId], references: [id])
   fan         Fan      @relation(fields: [fanId], references: [id])
   @@map("passes")
+}
+
+model Block {
+  id         String   @id @default(uuid())
+  creatorId  String   @map("creator_id")
+  fanAddress String   @map("fan_address")
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  @@unique([creatorId, fanAddress])
+  @@map("blocks")
 }
 
 model IndexerCheckpoint {

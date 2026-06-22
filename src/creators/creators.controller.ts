@@ -4,6 +4,7 @@ import { CreatorsService } from './creators.service';
 import { CreateCreatorDto } from './dto/create-creator.dto';
 import { UpdateCreatorDto } from './dto/update-creator.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminApiKeyGuard } from '../common/guards/admin-api-key.guard';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { RegisterWebhookDto } from '../webhooks/dto/register-webhook.dto';
 import { CreatorAnalyticsDto } from './creator-analytics.dto';
@@ -15,6 +16,33 @@ export class CreatorsController {
     private creatorsService: CreatorsService,
     private webhooksService: WebhooksService,
   ) {}
+
+  @Get('featured')
+  @ApiOperation({ summary: 'Get featured creators in display order' })
+  @ApiResponse({ status: 200, description: 'Return featured creators ordered by featuredOrder' })
+  getFeatured() {
+    return this.creatorsService.getFeatured();
+  }
+
+  @Post(':id/feature')
+  @UseGuards(AdminApiKeyGuard)
+  @ApiOperation({ summary: 'Feature a creator (admin only, requires X-Admin-Api-Key header)' })
+  @ApiResponse({ status: 201, description: 'Creator featured' })
+  @ApiResponse({ status: 401, description: 'Invalid admin key' })
+  @ApiResponse({ status: 404, description: 'Creator not found' })
+  setFeatured(@Param('id') id: string, @Body() body: { order: number }) {
+    return this.creatorsService.setFeatured(id, body.order ?? 0);
+  }
+
+  @Delete(':id/feature')
+  @UseGuards(AdminApiKeyGuard)
+  @ApiOperation({ summary: 'Unfeature a creator (admin only)' })
+  @ApiResponse({ status: 200, description: 'Creator unfeatured' })
+  @ApiResponse({ status: 401, description: 'Invalid admin key' })
+  @ApiResponse({ status: 404, description: 'Creator not found' })
+  unsetFeatured(@Param('id') id: string) {
+    return this.creatorsService.unsetFeatured(id);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all creators' })

@@ -24,6 +24,31 @@ export class CreatorsService {
     return { data: creators, total, page, limit };
   }
 
+  async getFeatured() {
+    return this.prisma.creator.findMany({
+      where: { featured: true },
+      orderBy: { featuredOrder: 'asc' },
+    });
+  }
+
+  async setFeatured(creatorId: string, order: number) {
+    const creator = await this.prisma.creator.findUnique({ where: { id: creatorId } });
+    if (!creator) throw new NotFoundException('Creator not found');
+    return this.prisma.creator.update({
+      where: { id: creatorId },
+      data: { featured: true, featuredOrder: order },
+    });
+  }
+
+  async unsetFeatured(creatorId: string) {
+    const creator = await this.prisma.creator.findUnique({ where: { id: creatorId } });
+    if (!creator) throw new NotFoundException('Creator not found');
+    return this.prisma.creator.update({
+      where: { id: creatorId },
+      data: { featured: false, featuredOrder: null },
+    });
+  }
+
   /**
    * Find a creator by their Stellar address.
    * 

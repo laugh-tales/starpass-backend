@@ -45,6 +45,8 @@ model Creator {
   avatarUrl      String?  @map("avatar_url")
   totalEarned    Decimal  @default(0) @map("total_earned")
   registeredAt   DateTime @map("registered_at")
+  featured       Boolean  @default(false)
+  featuredOrder  Int?     @map("featured_order")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { createHmac } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
 export class TiersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) {}
 
   /**
    * Get all active tiers for a creator
@@ -53,6 +58,57 @@ export class TiersService {
     }
 
     return tier;
+  }
+
+  private contentUrlSecret() {
+    return this.configService.get<string>('CONTENT_URL_SECRET') ?? 'default-content-secret';
+  }
+
+  private sign(payload: string): string {
+    return createHmac('sha256', this.contentUrlSecret()).update(payload).digest('hex');
+  }
+
+  async unlockContent(tierId: string, fanAddress: string) {
+    const tier = await this.prisma.tier.findUnique({ where: { id: tierId } });
+    if (!tier || !tier.active) throw new NotFoundException('Tier not found');
+
+    const fan = await this.prisma.fan.findUnique({ where: { stellarAddress: fanAddress } });
+    if (!fan) throw new ForbiddenException('Fan not found');
+
+    const now = new Date();
+    const valid = await this.prisma.pass.findFirst({
+      where: { fanId: fan.id, tierId, active: true, expiresAt: { gt: now } },
+    });
+    if (!valid) throw new ForbiddenException('No active pass for this tier');
+
+    const expiresAt = now.getTime() + 15 * 60 * 1000;
+    const payload = `${tierId}:${fanAddress}:${expiresAt}`;
+    const token = `${Buffer.from(payload).toString('base64url')}.${this.sign(payload)}`;
+
+    return { token, expiresAt: new Date(expiresAt).toISOString() };
+  }
+
+  async verifyContentToken(tierId: string, token: string) {
+    const [payloadB64, sig] = token.split('.');
+    if (!payloadB64 || !sig) return { valid: false, reason: 'Malformed token' };
+
+    let payload: string;
+    try {
+      payload = Buffer.from(payloadB64, 'base64url').toString();
+    } catch {
+      return { valid: false, reason: 'Malformed token' };
+    }
+
+    const parts = payload.split(':');
+    if (parts.length < 3) return { valid: false, reason: 'Malformed token' };
+
+    const expiresAt = parseInt(parts[parts.length - 1], 10);
+    if (Date.now() > expiresAt) return { valid: false, reason: 'Token expired' };
+
+    const expectedSig = this.sign(payload);
+    if (sig !== expectedSig) return { valid: false, reason: 'Invalid signature' };
+
+    return { valid: true };
   }
 
   /**

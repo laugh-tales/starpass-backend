@@ -1,16 +1,18 @@
-import { IsString, IsOptional, IsBoolean, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsBoolean, IsInt, Min, Max, Matches, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 
 export class ListPassesDto {
   @ApiPropertyOptional({ description: 'Stellar address of the fan to filter by' })
   @IsOptional()
-  @IsString()
+  @Matches(/^G[A-Z2-7]{55}$/, {
+    message: 'fan must be a valid Stellar public key',
+  })
   fan?: string;
 
   @ApiPropertyOptional({ description: 'UUID of the tier to filter by' })
   @IsOptional()
-  @IsString()
+  @IsUUID('4')
   tier_id?: string;
 
   @ApiPropertyOptional({ description: 'Filter by active status (true/false)' })

@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { CreatorsModule } from '../creators/creators.module';
-import { CreatorsService } from '../creators/creators.service';
 import { PrismaService } from '../common/prisma.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -38,8 +37,8 @@ describe('Creator Analytics Endpoint', () => {
 
   const authGuard = {
     canActivate: (context: any) => {
-      const request = context.switchToHttp().getRequest();
-      request.user = { sub: 'user-123' };
+      const req = context.switchToHttp().getRequest();
+      req.user = { sub: 'user-123' };
       return true;
     },
   };
@@ -122,8 +121,8 @@ describe('Creator Analytics Endpoint', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (context: any) => {
-          const request = context.switchToHttp().getRequest();
-          request.user = { sub: 'user-456' };
+          const req = context.switchToHttp().getRequest();
+          req.user = { sub: 'user-456' };
           return true;
         },
       })

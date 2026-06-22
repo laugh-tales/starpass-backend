@@ -7,15 +7,19 @@ import { PrismaService } from './common/prisma.service';
 
 describe('Swagger Documentation', () => {
   let app: INestApplication;
-  let originalEnv: string | undefined;
+  let originalNodeEnv: string | undefined;
+  let originalIndexerEnabled: string | undefined;
 
   beforeEach(() => {
     jest.setTimeout(30000);
-    originalEnv = process.env.NODE_ENV;
+    originalNodeEnv = process.env.NODE_ENV;
+    originalIndexerEnabled = process.env.INDEXER_ENABLED;
+    process.env.INDEXER_ENABLED = 'false';
   });
 
   afterEach(async () => {
-    process.env.NODE_ENV = originalEnv;
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.INDEXER_ENABLED = originalIndexerEnabled;
     if (app) {
       await app.close();
     }
@@ -36,7 +40,6 @@ describe('Swagger Documentation', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // Mimic the Swagger configuration logic in main.ts
     if (process.env.NODE_ENV !== 'production') {
       const config = new DocumentBuilder()
         .setTitle('StarPass API')
@@ -50,9 +53,7 @@ describe('Swagger Documentation', () => {
 
     await app.init();
 
-    const response = await request(app.getHttpServer())
-      .get('/api/docs/')
-      .expect(200);
+    const response = await request(app.getHttpServer()).get('/api/docs/').expect(200);
 
     expect(response.text).toContain('<div id="swagger-ui">');
   });
@@ -72,7 +73,6 @@ describe('Swagger Documentation', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // Mimic the Swagger configuration logic in main.ts
     if (process.env.NODE_ENV !== 'production') {
       const config = new DocumentBuilder()
         .setTitle('StarPass API')
@@ -86,8 +86,6 @@ describe('Swagger Documentation', () => {
 
     await app.init();
 
-    await request(app.getHttpServer())
-      .get('/api/docs/')
-      .expect(404);
+    await request(app.getHttpServer()).get('/api/docs/').expect(404);
   });
 });

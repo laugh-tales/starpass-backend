@@ -13,9 +13,10 @@ describe('Passes GET /passes Integration', () => {
     {
       id: 'pass-1',
       onChainId: BigInt(1),
-      tierId: 'tier-1',
+      tierId: '550e8400-e29b-41d4-a716-446655440000',
       creatorId: 'creator-1',
       fanId: 'fan-1',
+      fan: { stellarAddress: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' },
       purchasedAt: new Date('2026-01-01T00:00:00Z'),
       expiresAt: new Date('2026-12-31T23:59:59Z'),
       active: true,
@@ -25,9 +26,10 @@ describe('Passes GET /passes Integration', () => {
     {
       id: 'pass-2',
       onChainId: BigInt(2),
-      tierId: 'tier-2',
+      tierId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
       creatorId: 'creator-2',
       fanId: 'fan-2',
+      fan: { stellarAddress: 'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB' },
       purchasedAt: new Date('2025-01-01T00:00:00Z'),
       expiresAt: new Date('2025-06-30T23:59:59Z'), // expired
       active: false,
@@ -42,7 +44,7 @@ describe('Passes GET /passes Integration', () => {
       let filtered = [...mockPasses];
 
       if (fan) {
-        filtered = filtered.filter(p => p.fanId === fan);
+        filtered = filtered.filter(p => p.fan.stellarAddress === fan);
       }
       if (tier_id) {
         filtered = filtered.filter(p => p.tierId === tier_id);
@@ -154,16 +156,78 @@ describe('Passes GET /passes Integration', () => {
 
   it('should filter by tier_id', async () => {
     const res = await request(app.getHttpServer())
-      .get('/passes?tier_id=tier-1')
+      .get('/passes?tier_id=550e8400-e29b-41d4-a716-446655440000')
       .expect(200);
 
     expect(res.body.total).toBe(1);
     expect(res.body.data[0].id).toBe('pass-1');
     expect(mockPassesService.findAll).toHaveBeenCalledWith({
-      tier_id: 'tier-1',
+      tier_id: '550e8400-e29b-41d4-a716-446655440000',
       page: 1,
       limit: 20,
     });
+  });
+
+  it('should filter by fan Stellar address', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/passes?fan=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+      .expect(200);
+
+    expect(res.body.total).toBe(1);
+    expect(res.body.data[0].id).toBe('pass-1');
+    expect(mockPassesService.findAll).toHaveBeenCalledWith({
+      fan: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('should combine fan, tier_id, active, and expired filters', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/passes?fan=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&tier_id=550e8400-e29b-41d4-a716-446655440000&active=true&expired=false')
+      .expect(200);
+
+    expect(res.body.total).toBe(1);
+    expect(res.body.data[0].id).toBe('pass-1');
+    expect(mockPassesService.findAll).toHaveBeenCalledWith({
+      fan: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      tier_id: '550e8400-e29b-41d4-a716-446655440000',
+      active: true,
+      expired: false,
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('should paginate passes with custom page and limit', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/passes?page=2&limit=1')
+      .expect(200);
+
+    expect(res.body).toEqual({
+      data: expect.any(Array),
+      total: 2,
+      page: 2,
+      limit: 1,
+    });
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe('pass-2');
+    expect(mockPassesService.findAll).toHaveBeenCalledWith({
+      page: 2,
+      limit: 1,
+    });
+  });
+
+  it('should reject invalid fan value with 400', async () => {
+    await request(app.getHttpServer())
+      .get('/passes?fan=not-a-stellar-address')
+      .expect(400);
+  });
+
+  it('should reject invalid tier_id value with 400', async () => {
+    await request(app.getHttpServer())
+      .get('/passes?tier_id=not-a-uuid')
+      .expect(400);
   });
 
   it('should reject invalid active value with 400', async () => {

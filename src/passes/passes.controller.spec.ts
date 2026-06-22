@@ -47,8 +47,8 @@ describe('PassesController', () => {
   describe('findAll', () => {
     it('should call PassesService.findAll with queries', async () => {
       const dto: ListPassesDto = {
-        fan: 'GABC...',
-        tier_id: 'tier-uuid',
+        fan: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        tier_id: '550e8400-e29b-41d4-a716-446655440000',
         active: true,
         expired: false,
         page: 2,

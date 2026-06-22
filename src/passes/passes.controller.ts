@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ListPassesDto } from './dto/list-passes.dto';
 
 @ApiTags('passes')
-@Controller('passes')
+@Controller({ path: 'passes', version: '1' })
 export class PassesController {
   constructor(private passesService: PassesService) {}
 

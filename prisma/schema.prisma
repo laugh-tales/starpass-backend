@@ -36,42 +36,41 @@ model Session {
 }
 
 model Creator {
-  id             String   @id @default(uuid())
-  userId         String   @unique @map("user_id")
-  stellarAddress String   @unique @map("stellar_address")
-  email          String?  @unique
-  displayName    String   @map("display_name")
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  stellarAddress String    @unique @map("stellar_address")
+  email          String?   @unique
+  displayName    String    @map("display_name")
   bio            String?
-  avatarUrl      String?  @map("avatar_url")
-  totalEarned    Decimal  @default(0) @map("total_earned")
-  registeredAt   DateTime @map("registered_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl      String?   @map("avatar_url")
+  totalEarned    Decimal   @default(0) @map("total_earned")
+  registeredAt   DateTime  @map("registered_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tiers          Tier[]
   passes         Pass[]
+  blocks         Block[]
   webhooks       WebhookConfig[]
-  categories     CategoryOnCreator[]
+  payouts        Payout[]
   @@map("creators")
 }
 
-model Category {
-  id        String              @id @default(uuid())
-  name      String              @unique
-  slug      String              @unique
-  createdAt DateTime            @default(now()) @map("created_at")
-  creators  CategoryOnCreator[]
-  @@map("categories")
+enum PayoutStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
-model CategoryOnCreator {
-  creatorId  String   @map("creator_id")
-  categoryId String   @map("category_id")
-  assignedAt DateTime @default(now()) @map("assigned_at")
-  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  @@id([creatorId, categoryId])
-  @@map("category_on_creator")
+model Payout {
+  id        String       @id @default(uuid())
+  creatorId String       @map("creator_id")
+  amount    Decimal
+  txHash    String?      @map("tx_hash")
+  status    PayoutStatus @default(PENDING)
+  createdAt DateTime     @default(now()) @map("created_at")
+  creator   Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  @@map("payouts")
 }
 
 model WebhookConfig {
@@ -87,14 +86,17 @@ model WebhookConfig {
 }
 
 model Fan {
-  id             String   @id @default(uuid())
-  userId         String   @unique @map("user_id")
-  stellarAddress String   @unique @map("stellar_address")
-  displayName    String?  @map("display_name")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  passes         Pass[]
+  id                  String    @id @default(uuid())
+  userId              String    @unique @map("user_id")
+  stellarAddress      String    @unique @map("stellar_address")
+  displayName         String?   @map("display_name")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletionRequestedAt DateTime? @map("deletion_requested_at")
+  anonymized          Boolean   @default(false)
+  permanentlyDeletedAt DateTime? @map("permanently_deleted_at")
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passes              Pass[]
   @@map("fans")
 }
 
@@ -114,8 +116,22 @@ model Tier {
   updatedAt    DateTime @updatedAt @map("updated_at")
   creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   passes       Pass[]
+  waitlist     WaitlistEntry[]
   @@unique([creatorId, onChainId])
   @@map("tiers")
+}
+
+model WaitlistEntry {
+  id           String   @id @default(uuid())
+  tierId       String   @map("tier_id")
+  fanAddress   String   @map("fan_address")
+  joinedAt      DateTime @default(now()) @map("joined_at")
+  notified     Boolean  @default(false)
+  tier          Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  @@unique([tierId, fanAddress])
+  @@map("waitlist_entries")
 }
 
 model Pass {
@@ -136,9 +152,32 @@ model Pass {
   @@map("passes")
 }
 
+model EarningsRecord {
+  id        String   @id @default(uuid())
+  creatorId String   @map("creator_id")
+  fanId     String   @map("fan_id")
+  tierId    String   @map("tier_id")
+  amount    Decimal  @map("amount")
+  fee       Decimal  @default(0) @map("fee")
+  netAmount Decimal  @map("net_amount")
+  createdAt DateTime @default(now()) @map("created_at")
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  fan       Fan      @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  tier      Tier     @relation(fields: [tierId], references: [id])
+  @@map("earnings_records")
+}
+
 model IndexerCheckpoint {
   id         String   @id @default("singleton")
   lastLedger Int      @default(0) @map("last_ledger")
   updatedAt  DateTime @updatedAt @map("updated_at")
   @@map("indexer_checkpoints")
+}
+
+model PlatformConfig {
+  id          String   @id @default("singleton")
+  feeBps      Int      @default(250) @map("fee_bps")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by")
+  @@map("platform_configs")
 }

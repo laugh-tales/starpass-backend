@@ -52,4 +52,37 @@ export class EmailService {
       this.logger.error(`Failed to send email to ${creatorEmail}: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
     }
   }
+
+  async sendWaitlistSlotOpenEmail(
+    fanEmail: string,
+    tierName: string,
+    creatorName: string,
+  ): Promise<void> {
+    try {
+      const fromEmail = this.configService.get<string>('FROM_EMAIL', 'noreply@starpass.com');
+
+      const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>A slot opened up on the waitlist!</h2>
+          <p>Great news! A slot has become available for the tier you were waiting for.</p>
+          <ul>
+            <li><strong>Tier:</strong> ${tierName}</li>
+            <li><strong>Creator:</strong> ${creatorName}</li>
+          </ul>
+          <p>Hurry! You have first priority to purchase this pass.</p>
+        </div>
+      `;
+
+      await this.transporter.sendMail({
+        from: fromEmail,
+        to: fanEmail,
+        subject: 'Waitlist Slot Available - StarPass',
+        html,
+      });
+
+      this.logger.log(`Email notification sent to ${fanEmail} for waitlist slot opening.`);
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${fanEmail}: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
+    }
+  }
 }

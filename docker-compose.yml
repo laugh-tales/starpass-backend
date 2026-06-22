@@ -5,15 +5,28 @@ services:
     image: postgres:16-alpine
     container_name: starpass-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: starpass
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-starpass}
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: starpass-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,16 +37,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/starpass
-      JWT_SECRET: dev-secret-change-in-production
-      STELLAR_RPC_URL: https://soroban-testnet.stellar.org
-      STELLAR_NETWORK: testnet
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:password@postgres:5432/starpass}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      STELLAR_RPC_URL: ${STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      STELLAR_NETWORK: ${STELLAR_NETWORK:-testnet}
       STARPASS_CONTRACT_ID: ${STARPASS_CONTRACT_ID:-YOUR_CONTRACT_ID}
-      INDEXER_ENABLED: 'true'
-      INDEXER_INTERVAL_MS: '10000'
-      PORT: 4000
-      FRONTEND_URL: http://localhost:3000
+      INDEXER_ENABLED: ${INDEXER_ENABLED:-true}
+      INDEXER_INTERVAL_MS: ${INDEXER_INTERVAL_MS:-10000}
+      PORT: ${PORT:-4000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     ports:
       - '4000:4000'
     volumes:
@@ -42,3 +58,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

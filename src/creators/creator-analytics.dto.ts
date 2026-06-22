@@ -1,8 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+class SubscriberGrowthPointDto {
+  @ApiProperty({ example: '2026-06-01' })
+  date: string;
+
+  @ApiProperty({ example: 120 })
+  count: number;
+}
+
 export class CreatorAnalyticsDto {
-  @ApiProperty({ type: [{ date: '2026-06-01', count: 120 }] })
-  subscriberGrowth: Array<{ date: string; count: number }>;
+  @ApiProperty({ type: [SubscriberGrowthPointDto] })
+  subscriberGrowth: SubscriberGrowthPointDto[];
 
   @ApiProperty({ description: 'Churn rate as a percentage' })
   churnRate: number;

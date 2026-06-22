@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { ListPassesDto } from './dto/list-passes.dto';
 import { EmailService } from '../notifications/email.service';
+import { TiersService } from '../tiers/tiers.service';
 
 @Injectable()
 export class PassesService {
@@ -12,6 +13,7 @@ export class PassesService {
     private prisma: PrismaService,
     private webhooksService: WebhooksService,
     private emailService: EmailService,
+    private tiersService: TiersService,
   ) {}
 
   /**
@@ -154,6 +156,11 @@ export class PassesService {
       throw new ForbiddenException('Only the pass owner can view this receipt');
     }
 
+    const feeBps = await this.adminConfigService.getCurrentFeeBps();
+    const priceUsdc = parseFloat(pass.tier.priceUsdc.toString());
+    const feeAmount = parseFloat(((priceUsdc * feeBps) / 10000).toFixed(6));
+    const creatorAmount = parseFloat((priceUsdc - feeAmount).toFixed(6));
+
     return {
       pass: {
         id: pass.id,
@@ -165,6 +172,9 @@ export class PassesService {
       creator: pass.creator,
       purchasedAt: pass.purchasedAt,
       amount: pass.tier.priceUsdc.toString(),
+      feeBps,
+      feeAmount: feeAmount.toString(),
+      creatorAmount: creatorAmount.toString(),
       txHash: pass.txHash ?? null,
     };
   }
@@ -195,6 +205,19 @@ export class PassesService {
     ]);
 
     if (!creator || !tier) return null;
+
+    const block = await this.prisma.block.findUnique({
+      where: {
+        creatorId_fanAddress: {
+          creatorId: creator.id,
+          fanAddress: data.fanAddress,
+        },
+      },
+    });
+
+    if (block) {
+      throw new ForbiddenException('Fan is blocked by this creator');
+    }
 
     // Check if the pass already exists
     const existingPass = await this.prisma.pass.findUnique({
@@ -236,6 +259,22 @@ export class PassesService {
     });
 
     if (!existingPass) {
+      const amount = Number(tier.priceUsdc);
+      const fee = 0;
+      const netAmount = amount - fee;
+      this.prisma.earningsRecord.create({
+        data: {
+          creatorId: creator.id,
+          fanId: fan.id,
+          tierId: tier.id,
+          amount,
+          fee,
+          netAmount,
+        },
+      }).catch((err) => {
+        this.logger.error(`Error recording earnings: ${err.message}`);
+      });
+
       // Trigger webhook delivery asynchronously without blocking
       this.webhooksService.deliverPassPurchaseWebhook(creator.id, pass).catch((err) => {
         this.logger.error(`Error triggering webhook: ${err.message}`);

@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { ListPassesDto } from './dto/list-passes.dto';
 import { EmailService } from '../notifications/email.service';
+import { StellarService } from '../stellar/stellar.service';
 
 @Injectable()
 export class PassesService {
@@ -12,6 +13,7 @@ export class PassesService {
     private prisma: PrismaService,
     private webhooksService: WebhooksService,
     private emailService: EmailService,
+    private stellarService: StellarService,
   ) {}
 
   /**
@@ -255,6 +257,29 @@ export class PassesService {
     }
 
     return pass;
+  }
+
+  async verifyOnChain(passId: string) {
+    const pass = await this.prisma.pass.findUnique({
+      where: { id: passId },
+      include: { fan: true, tier: true },
+    });
+    if (!pass) throw new NotFoundException('Pass not found');
+
+    const txHash = pass.txHash ?? null;
+    const onChainValid = await this.stellarService.hasValidPassOnChain(
+      pass.fan.stellarAddress,
+      pass.tier.onChainId,
+    );
+
+    return {
+      passId: pass.id,
+      onChainId: pass.onChainId.toString(),
+      txHash,
+      onChainValid,
+      expiresAt: pass.expiresAt,
+      active: pass.active,
+    };
   }
 
   /**

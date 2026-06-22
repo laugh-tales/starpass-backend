@@ -65,6 +65,14 @@ export class PassesController {
     return this.passesService.getReceipt(id, req.user.address);
   }
 
+  @Get(':id/verify')
+  @ApiOperation({ summary: 'Verify a pass against the Stellar blockchain' })
+  @ApiResponse({ status: 200, description: 'On-chain verification result with txHash' })
+  @ApiResponse({ status: 404, description: 'Pass not found' })
+  verifyOnChain(@Param('id') id: string) {
+    return this.passesService.verifyOnChain(id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all passes with filters and pagination' })
   @ApiResponse({ status: 200, description: 'Return paginated list of passes' })

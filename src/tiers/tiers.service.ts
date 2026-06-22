@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
@@ -53,6 +53,39 @@ export class TiersService {
     }
 
     return tier;
+  }
+
+  async joinWaitlist(tierId: string, fanAddress: string) {
+    const tier = await this.prisma.tier.findUnique({ where: { id: tierId } });
+    if (!tier) throw new NotFoundException('Tier not found');
+
+    if (tier.maxSupply === 0 || tier.minted < tier.maxSupply) {
+      throw new ConflictException('Tier is not sold out — you can purchase directly');
+    }
+
+    try {
+      return await this.prisma.waitlist.create({
+        data: { tierId, fanAddress },
+      });
+    } catch {
+      throw new ConflictException('You are already on the waitlist for this tier');
+    }
+  }
+
+  async getWaitlistPosition(tierId: string, fanAddress: string) {
+    const tier = await this.prisma.tier.findUnique({ where: { id: tierId } });
+    if (!tier) throw new NotFoundException('Tier not found');
+
+    const entry = await this.prisma.waitlist.findUnique({
+      where: { tierId_fanAddress: { tierId, fanAddress } },
+    });
+    if (!entry) throw new NotFoundException('You are not on the waitlist for this tier');
+
+    const position = await this.prisma.waitlist.count({
+      where: { tierId, joinedAt: { lte: entry.joinedAt }, notified: false },
+    });
+
+    return { position, joinedAt: entry.joinedAt, notified: entry.notified };
   }
 
   /**

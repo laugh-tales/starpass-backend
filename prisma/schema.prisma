@@ -48,9 +48,10 @@ model Creator {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tiers          Tier[]
-  passes         Pass[]
-  webhooks       WebhookConfig[]
+  tiers            Tier[]
+  passes           Pass[]
+  webhooks         WebhookConfig[]
+  contentSchedules ContentSchedule[]
   @@map("creators")
 }
 
@@ -92,8 +93,9 @@ model Tier {
   syncedAt     DateTime @map("synced_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  passes       Pass[]
+  creator          Creator           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  passes           Pass[]
+  contentSchedules ContentSchedule[]
   @@unique([creatorId, onChainId])
   @@map("tiers")
 }
@@ -114,6 +116,21 @@ model Pass {
   creator     Creator  @relation(fields: [creatorId], references: [id])
   fan         Fan      @relation(fields: [fanId], references: [id])
   @@map("passes")
+}
+
+model ContentSchedule {
+  id          String   @id @default(uuid())
+  creatorId   String   @map("creator_id")
+  tierId      String   @map("tier_id")
+  contentUrl  String   @map("content_url")
+  title       String
+  availableAt DateTime @map("available_at")
+  active      Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tier        Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  @@map("content_schedules")
 }
 
 model IndexerCheckpoint {

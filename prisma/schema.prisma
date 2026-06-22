@@ -122,3 +122,11 @@ model IndexerCheckpoint {
   updatedAt  DateTime @updatedAt @map("updated_at")
   @@map("indexer_checkpoints")
 }
+
+model PlatformConfig {
+  id        String   @id @default("singleton")
+  feeBps    Int      @default(250) @map("fee_bps")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+  @@map("platform_config")
+}

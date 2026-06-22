@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { PassesService } from './passes.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -71,5 +71,20 @@ export class PassesController {
   @ApiResponse({ status: 400, description: 'Invalid query parameters' })
   findAll(@Query() query: ListPassesDto) {
     return this.passesService.findAll(query);
+  }
+
+  @Post('gift')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Gift a pass to another fan — caller pays, recipient receives' })
+  @ApiResponse({ status: 201, description: 'Pass gifted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Cannot gift a pass to yourself' })
+  @ApiResponse({ status: 404, description: 'Tier not found or inactive' })
+  giftPass(
+    @Body() body: { tierId: string; recipientAddress: string },
+    @Request() req: any,
+  ) {
+    return this.passesService.giftPass(req.user.address, body.tierId, body.recipientAddress);
   }
 }

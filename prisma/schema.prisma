@@ -108,6 +108,7 @@ model Pass {
   expiresAt   DateTime @map("expires_at")
   txHash      String?  @map("tx_hash")
   active      Boolean  @default(true)
+  giftedBy    String?  @map("gifted_by")
   syncedAt    DateTime @map("synced_at")
   createdAt   DateTime @default(now()) @map("created_at")
   tier        Tier     @relation(fields: [tierId], references: [id])

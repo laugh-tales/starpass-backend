@@ -258,6 +258,63 @@ export class PassesService {
   }
 
   /**
+   * Gift a pass to another fan — caller pays, recipient receives the pass
+   */
+  async giftPass(senderAddress: string, tierId: string, recipientAddress: string) {
+    if (senderAddress === recipientAddress) {
+      throw new ForbiddenException('You cannot gift a pass to yourself');
+    }
+
+    const tier = await this.prisma.tier.findUnique({ where: { id: tierId } });
+    if (!tier || !tier.active) throw new NotFoundException('Tier not found or inactive');
+
+    const recipientFan = await this.prisma.fan.upsert({
+      where: { stellarAddress: recipientAddress },
+      update: {},
+      create: {
+        stellarAddress: recipientAddress,
+        user: {
+          connectOrCreate: {
+            where: { stellarAddress: recipientAddress },
+            create: { stellarAddress: recipientAddress },
+          },
+        },
+      },
+    });
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + tier.durationDays * 24 * 60 * 60 * 1000);
+
+    const pass = await this.prisma.pass.create({
+      data: {
+        onChainId: BigInt(-Date.now()),
+        tierId,
+        creatorId: tier.creatorId,
+        fanId: recipientFan.id,
+        purchasedAt: now,
+        expiresAt,
+        giftedBy: senderAddress,
+        syncedAt: now,
+      },
+      include: { tier: true, creator: true, fan: true },
+    });
+
+    const creator = await this.prisma.creator.findUnique({ where: { id: tier.creatorId } });
+    if (creator?.email) {
+      this.emailService.sendPassPurchaseEmail(
+        creator.email,
+        recipientAddress,
+        tier.name,
+        tier.priceUsdc.toString(),
+      ).catch((err) => {
+        this.logger.error(`Error sending gift email: ${err.message}`);
+      });
+    }
+
+    return pass;
+  }
+
+  /**
    * Find all passes with filtering and pagination
    */
   async findAll(filters: ListPassesDto) {

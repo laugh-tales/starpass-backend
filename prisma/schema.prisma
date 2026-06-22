@@ -51,6 +51,7 @@ model Creator {
   tiers          Tier[]
   passes         Pass[]
   webhooks       WebhookConfig[]
+  apiKeys        ApiKey[]
   @@map("creators")
 }
 
@@ -114,6 +115,18 @@ model Pass {
   creator     Creator  @relation(fields: [creatorId], references: [id])
   fan         Fan      @relation(fields: [fanId], references: [id])
   @@map("passes")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String
+  keyHash     String    @unique @map("key_hash")
+  creatorId   String    @map("creator_id")
+  permissions String[]
+  lastUsedAt  DateTime? @map("last_used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  creator     Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  @@map("api_keys")
 }
 
 model IndexerCheckpoint {

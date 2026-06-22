@@ -26,6 +26,21 @@ export class CreatorsController {
     return this.creatorsService.findAll(+page, +limit);
   }
 
+  @Get(':id/referrals')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get referral stats for a creator (owner only)' })
+  @ApiResponse({ status: 200, description: 'Referral stats including code, totals, and recent referrals' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Creator not found' })
+  getReferrals(@Param('id') id: string, @Request() req: any) {
+    if (req.user?.sub !== id) {
+      throw new ForbiddenException('You are not authorized to access this creator referral stats');
+    }
+    return this.creatorsService.getReferralStats(id);
+  }
+
   @Get(':address')
   @ApiOperation({ summary: 'Get creator by Stellar address' })
   @ApiResponse({ status: 200, description: 'Return creator profile' })

@@ -15,6 +15,30 @@ export class CreatorsService {
    * @param limit The maximum number of creators per page.
    * @returns An object containing the list of creators, total count, page, and limit.
    */
+  async getReferralStats(creatorId: string) {
+    const creator = await this.prisma.creator.findUnique({ where: { id: creatorId } });
+    if (!creator) throw new NotFoundException('Creator not found');
+
+    const referrals = await this.prisma.pass.findMany({
+      where: { creatorId, referredBy: { not: null } },
+      select: { referredBy: true, purchasedAt: true, fanId: true },
+      orderBy: { purchasedAt: 'desc' },
+    });
+
+    const uniqueFans = new Set(referrals.map((r) => r.fanId));
+
+    return {
+      referralCode: creator.referralCode,
+      totalReferrals: referrals.length,
+      uniqueReferredFans: uniqueFans.size,
+      recent: referrals.slice(0, 20).map((r) => ({
+        referralCode: r.referredBy,
+        fanId: r.fanId,
+        purchasedAt: r.purchasedAt.toISOString(),
+      })),
+    };
+  }
+
   async findAll(page: number, limit: number) {
     const skip = (page - 1) * limit;
     const [creators, total] = await Promise.all([

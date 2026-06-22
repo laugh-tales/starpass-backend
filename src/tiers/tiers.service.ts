@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
@@ -7,7 +7,7 @@ export class TiersService {
 
   /**
    * Get all active tiers for a creator
-   * 
+   *
    * @param stellarAddress The Stellar public key of the creator.
    * @returns A list of active tiers for the given creator.
    * @throws {NotFoundException} If the creator is not found.
@@ -23,7 +23,7 @@ export class TiersService {
 
     return this.prisma.tier.findMany({
       where: { creatorId: creator.id, active: true },
-      orderBy: { onChainId: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { onChainId: 'asc' }],
     });
   }
 
@@ -106,6 +106,31 @@ export class TiersService {
         active: data.active,
         syncedAt: new Date(),
       },
+    });
+  }
+
+  async reorderTiers(creatorAddress: string, tierIds: string[]) {
+    const creator = await this.prisma.creator.findUnique({ where: { stellarAddress: creatorAddress } });
+    if (!creator) throw new NotFoundException('Creator not found');
+
+    const tiers = await this.prisma.tier.findMany({ where: { creatorId: creator.id } });
+    const ownedIds = new Set(tiers.map((t) => t.id));
+
+    for (const id of tierIds) {
+      if (!ownedIds.has(id)) {
+        throw new BadRequestException(`Tier ${id} does not belong to this creator`);
+      }
+    }
+
+    await Promise.all(
+      tierIds.map((id, index) =>
+        this.prisma.tier.update({ where: { id }, data: { sortOrder: index } }),
+      ),
+    );
+
+    return this.prisma.tier.findMany({
+      where: { creatorId: creator.id, active: true },
+      orderBy: [{ sortOrder: 'asc' }, { onChainId: 'asc' }],
     });
   }
 }

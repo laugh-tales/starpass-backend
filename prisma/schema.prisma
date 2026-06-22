@@ -89,6 +89,7 @@ model Tier {
   maxSupply    Int      @default(0) @map("max_supply")
   minted       Int      @default(0)
   active       Boolean  @default(true)
+  sortOrder    Int      @default(0) @map("sort_order")
   syncedAt     DateTime @map("synced_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

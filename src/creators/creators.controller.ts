@@ -126,4 +126,12 @@ export class CreatorsController {
   ) {
     return this.webhooksService.remove(id, webhookId);
   }
+
+  @Get(':address/onboarding')
+  @ApiOperation({ summary: 'Get onboarding checklist status for a creator' })
+  @ApiResponse({ status: 200, description: 'Checklist items with completion status' })
+  @ApiResponse({ status: 404, description: 'Creator not found' })
+  getOnboarding(@Param('address') address: string) {
+    return this.creatorsService.getOnboarding(address);
+  }
 }

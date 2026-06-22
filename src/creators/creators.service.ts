@@ -293,4 +293,27 @@ export class CreatorsService {
     if (!activeAtStart) return 0;
     return Number(((activeAtEnd / activeAtStart) * 100).toFixed(1));
   }
+
+  async getOnboarding(stellarAddress: string) {
+    const creator = await this.prisma.creator.findUnique({
+      where: { stellarAddress },
+      include: {
+        tiers: { take: 1 },
+        passes: { take: 1 },
+      },
+    });
+    if (!creator) throw new NotFoundException('Creator not found');
+
+    const profileComplete = !!(creator.displayName && creator.bio && creator.email);
+    const avatarUploaded = !!creator.avatarUrl;
+    const tierCreated = creator.tiers.length > 0;
+    const firstPassSold = creator.passes.length > 0;
+
+    return [
+      { item: 'profile_complete', completed: profileComplete, completedAt: profileComplete ? creator.updatedAt : null },
+      { item: 'avatar_uploaded', completed: avatarUploaded, completedAt: avatarUploaded ? creator.updatedAt : null },
+      { item: 'tier_created', completed: tierCreated, completedAt: tierCreated ? creator.tiers[0].createdAt : null },
+      { item: 'first_pass_sold', completed: firstPassSold, completedAt: firstPassSold ? creator.passes[0].purchasedAt : null },
+    ];
+  }
 }

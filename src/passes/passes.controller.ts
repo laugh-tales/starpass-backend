@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { PassesService } from './passes.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ListPassesDto } from './dto/list-passes.dto';
@@ -71,5 +72,17 @@ export class PassesController {
   @ApiResponse({ status: 400, description: 'Invalid query parameters' })
   findAll(@Query() query: ListPassesDto) {
     return this.passesService.findAll(query);
+  }
+
+  @Post('trial')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Claim a free trial pass for a tier (once per fan per tier)' })
+  @ApiResponse({ status: 201, description: 'Trial pass created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Trial already used for this tier' })
+  @ApiResponse({ status: 404, description: 'Tier not found or no trial available' })
+  claimTrial(@Body() body: { tierId: string }, @Request() req: any) {
+    return this.passesService.claimTrial(req.user.address, body.tierId);
   }
 }

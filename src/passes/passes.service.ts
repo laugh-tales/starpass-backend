@@ -258,6 +258,43 @@ export class PassesService {
   }
 
   /**
+   * Claim a free trial pass for a tier (once per fan per tier, only when tier.trialDays > 0)
+   */
+  async claimTrial(fanAddress: string, tierId: string) {
+    const tier = await this.prisma.tier.findUnique({ where: { id: tierId } });
+    if (!tier) throw new NotFoundException('Tier not found');
+    if (!tier.active) throw new NotFoundException('Tier is not active');
+    if (tier.trialDays === 0) throw new NotFoundException('This tier does not offer a free trial');
+
+    const fan = await this.prisma.fan.findUnique({ where: { stellarAddress: fanAddress } });
+    if (!fan) throw new NotFoundException('Fan not found');
+
+    const alreadyUsed = await this.prisma.pass.findFirst({
+      where: { fanId: fan.id, tierId, trialUsed: true },
+    });
+    if (alreadyUsed) {
+      throw new ForbiddenException('Free trial already used for this tier');
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + tier.trialDays * 24 * 60 * 60 * 1000);
+
+    return this.prisma.pass.create({
+      data: {
+        onChainId: BigInt(-Date.now()),
+        tierId,
+        creatorId: tier.creatorId,
+        fanId: fan.id,
+        purchasedAt: now,
+        expiresAt,
+        trialUsed: true,
+        syncedAt: now,
+      },
+      include: { tier: true, creator: true },
+    });
+  }
+
+  /**
    * Find all passes with filtering and pagination
    */
   async findAll(filters: ListPassesDto) {

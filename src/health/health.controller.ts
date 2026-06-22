@@ -47,9 +47,8 @@ export class HealthController {
       hasError = true;
     }
 
-    try {
-      await this.stellarService.getLatestLedger();
-    } catch (error) {
+    const stellarHealth = await this.stellarService.checkRpcHealth();
+    if (!stellarHealth.healthy) {
       stellarStatus = 'down';
       hasError = true;
     }
@@ -59,6 +58,8 @@ export class HealthController {
       dependencies: {
         database: databaseStatus,
         stellar: stellarStatus,
+        ...(stellarHealth.latencyMs !== undefined ? { stellarLatencyMs: stellarHealth.latencyMs } : {}),
+        ...(stellarHealth.error ? { stellarError: stellarHealth.error } : {}),
       },
     };
 

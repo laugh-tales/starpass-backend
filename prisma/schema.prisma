@@ -51,6 +51,7 @@ model Creator {
   tiers          Tier[]
   passes         Pass[]
   webhooks       WebhookConfig[]
+  members        CreatorMember[]
   @@map("creators")
 }
 
@@ -114,6 +115,22 @@ model Pass {
   creator     Creator  @relation(fields: [creatorId], references: [id])
   fan         Fan      @relation(fields: [fanId], references: [id])
   @@map("passes")
+}
+
+model CreatorMember {
+  id        String           @id @default(uuid())
+  creatorId String           @map("creator_id")
+  address   String
+  role      CreatorMemberRole @default(EDITOR)
+  addedAt   DateTime         @default(now()) @map("added_at")
+  creator   Creator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  @@unique([creatorId, address])
+  @@map("creator_members")
+}
+
+enum CreatorMemberRole {
+  OWNER
+  EDITOR
 }
 
 model IndexerCheckpoint {

@@ -22,15 +22,39 @@ function slugify(value: string) {
 }
 
 async function main() {
-  await Promise.all(
-    categories.map((name) =>
-      prisma.category.upsert({
-        where: { slug: slugify(name) },
-        update: { name },
-        create: { name, slug: slugify(name) },
-      }),
-    ),
-  );
+  // Create default tenant
+  const defaultTenant = await prisma.tenant.upsert({
+    where: { slug: 'default' },
+    update: {},
+    create: {
+      name: 'Default Tenant',
+      slug: 'default',
+      status: 'ACTIVE',
+      feeBps: 250,
+      maxCreators: 1000,
+      maxPassesPerCreator: 100,
+      features: {},
+    },
+  });
+
+  // Create categories for default tenant
+  for (const name of categories) {
+    const slug = slugify(name);
+    await prisma.category.upsert({
+      where: { 
+        tenantId_slug: {
+          tenantId: defaultTenant.id,
+          slug,
+        },
+      },
+      update: { name },
+      create: { 
+        name, 
+        slug,
+        tenantId: defaultTenant.id,
+      },
+    });
+  }
 }
 
 main()

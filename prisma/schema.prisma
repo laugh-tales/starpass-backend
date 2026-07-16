@@ -7,16 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  status          TenantStatus @default(ACTIVE)
+  
+  // White-label branding
+  logoUrl         String?  @map("logo_url")
+  primaryColor    String?  @map("primary_color")
+  secondaryColor  String?  @map("secondary_color")
+  customDomain    String?  @unique @map("custom_domain")
+  
+  // Feature flags
+  features        Json     @default("{}")
+  
+  // Configuration
+  feeBps          Int      @default(250) @map("fee_bps")
+  maxCreators     Int      @default(1000) @map("max_creators")
+  maxPassesPerCreator Int  @default(100) @map("max_passes_per_creator")
+  
+  // Contact info
+  adminEmail      String?  @map("admin_email")
+  supportEmail    String?  @map("support_email")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  users           User[]
+  creators        Creator[]
+  categories      Category[]
+  
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  TRIAL
+}
+
 model User {
   id             String    @id @default(uuid())
-  stellarAddress String    @unique @map("stellar_address")
+  tenantId       String    @map("tenant_id")
+  stellarAddress String    @map("stellar_address")
   role           UserRole  @default(FAN)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   creator        Creator?
   fan            Fan?
   sessions       Session[]
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   @@map("users")
+  @@index([tenantId])
+  @@unique([tenantId, stellarAddress])
 }
 
 enum UserRole {
@@ -37,9 +82,10 @@ model Session {
 
 model Creator {
   id             String    @id @default(uuid())
-  userId         String    @unique @map("user_id")
-  stellarAddress String    @unique @map("stellar_address")
-  email          String?   @unique
+  tenantId       String    @map("tenant_id")
+  userId         String    @map("user_id")
+  stellarAddress String    @map("stellar_address")
+  email          String?   @map("email")
   displayName    String    @map("display_name")
   bio            String?
   avatarUrl      String?   @map("avatar_url")
@@ -52,6 +98,7 @@ model Creator {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tiers          Tier[]
   passes         Pass[]
   blocks         Block[]
@@ -62,17 +109,25 @@ model Creator {
   earningsRecords EarningsRecord[]
   creatorMembers  CreatorMember[]
   @@map("creators")
+  @@index([tenantId])
+  @@unique([tenantId, userId])
+  @@unique([tenantId, stellarAddress])
+  @@index([tenantId, email], where: { email: { not: null } })
 }
 
 model Category {
   id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
   name      String
-  slug      String    @unique
+  slug      String
   creators  Creator[]
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@map("categories")
+  @@index([tenantId])
+  @@unique([tenantId, slug])
 }
 
 enum PayoutStatus {
@@ -106,9 +161,10 @@ model WebhookConfig {
 
 model Fan {
   id                  String    @id @default(uuid())
-  userId              String    @unique @map("user_id")
-  stellarAddress      String    @unique @map("stellar_address")
-  email               String?   @unique
+  tenantId            String    @map("tenant_id")
+  userId              String    @map("user_id")
+  stellarAddress      String    @map("stellar_address")
+  email               String?   @map("email")
   displayName         String?   @map("display_name")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
@@ -117,14 +173,20 @@ model Fan {
   permanentlyDeletedAt DateTime? @map("permanently_deleted_at")
   lastExportRequestedAt DateTime? @map("last_export_requested_at")
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   passes              Pass[]
   notifications       Notification[]
   earningsRecords     EarningsRecord[]
   @@map("fans")
+  @@index([tenantId])
+  @@unique([tenantId, userId])
+  @@unique([tenantId, stellarAddress])
+  @@index([tenantId, email], where: { email: { not: null } })
 }
 
 model Tier {
   id           String        @id @default(uuid())
+  tenantId     String        @map("tenant_id")
   onChainId    Int           @map("on_chain_id")
   creatorId    String        @map("creator_id")
   name         String
@@ -139,6 +201,7 @@ model Tier {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   creator      Creator       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   passes       Pass[]
   waitlist     WaitlistEntry[]
   earningsRecords EarningsRecord[]
@@ -146,6 +209,7 @@ model Tier {
   contentSchedules ContentSchedule[]
   @@unique([creatorId, onChainId])
   @@map("tiers")
+  @@index([tenantId])
 }
 
 model TierPrice {
@@ -162,19 +226,23 @@ model TierPrice {
 
 model WaitlistEntry {
   id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
   tierId       String   @map("tier_id")
   fanAddress   String   @map("fan_address")
   joinedAt      DateTime @default(now()) @map("joined_at")
   notified     Boolean  @default(false)
   tier          Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   @@unique([tierId, fanAddress])
   @@map("waitlist_entries")
+  @@index([tenantId])
 }
 
 model Pass {
   id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
   onChainId   BigInt   @unique @map("on_chain_id")
   tierId      String   @map("tier_id")
   creatorId   String   @map("creator_id")
@@ -192,8 +260,10 @@ model Pass {
   tier        Tier     @relation(fields: [tierId], references: [id])
   creator     Creator  @relation(fields: [creatorId], references: [id])
   fan         Fan      @relation(fields: [fanId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   renewalAttempts RenewalAttempt[]
   @@map("passes")
+  @@index([tenantId])
 }
 
 enum RenewalAttemptStatus {
@@ -215,6 +285,7 @@ model RenewalAttempt {
 
 model EarningsRecord {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   creatorId String   @map("creator_id")
   fanId     String   @map("fan_id")
   tierId    String   @map("tier_id")
@@ -225,7 +296,9 @@ model EarningsRecord {
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   fan       Fan      @relation(fields: [fanId], references: [id], onDelete: Cascade)
   tier      Tier     @relation(fields: [tierId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   @@map("earnings_records")
+  @@index([tenantId])
 }
 
 model IndexerCheckpoint {
@@ -245,16 +318,20 @@ model PlatformConfig {
 
 model Block {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   creatorId String   @map("creator_id")
   blockedAddress String @map("blocked_address")
   createdAt DateTime @default(now()) @map("created_at")
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   @@unique([creatorId, blockedAddress])
   @@map("blocks")
+  @@index([tenantId])
 }
 
 model CreatorMember {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   creatorId String   @map("creator_id")
   address   String
   role      String   @default("EDITOR")
@@ -262,13 +339,16 @@ model CreatorMember {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([creatorId, address])
   @@map("creator_members")
+  @@index([tenantId])
 }
 
 model ContentSchedule {
   id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
   creatorId  String   @map("creator_id")
   tierId     String   @map("tier_id")
   contentUrl String   @map("content_url")
@@ -279,12 +359,15 @@ model ContentSchedule {
 
   creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   tier       Tier     @relation(fields: [tierId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("content_schedules")
+  @@index([tenantId])
 }
 
 model Notification {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   fanId     String   @map("fan_id")
   title     String
   body      String
@@ -293,6 +376,8 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
 
   fan       Fan      @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+  @@index([tenantId])
 }

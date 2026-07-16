@@ -22,16 +22,23 @@ export class AuthService {
    * @returns Access token, refresh token, and user record.
    * @throws {UnauthorizedException} If the signature is invalid.
    */
-  async login(stellarAddress: string, signature: string, message: string) {
+  async login(stellarAddress: string, signature: string, message: string, tenantId?: string) {
     const isValid = this.verifySignature(stellarAddress, message, signature);
     if (!isValid) {
       throw new UnauthorizedException('Invalid signature');
     }
 
+    // If no tenantId provided, use default tenant
+    const targetTenantId = tenantId || await this.getDefaultTenantId();
+
     const user = await this.prisma.user.upsert({
       where: { stellarAddress },
       update: {},
-      create: { stellarAddress },
+      create: { 
+        stellarAddress,
+        tenantId: targetTenantId,
+      },
+      include: { tenant: true },
     });
 
     const accessToken = this.signAccess(user);
@@ -100,8 +107,13 @@ export class AuthService {
     }
   }
 
-  private signAccess(user: { id: string; stellarAddress: string; role: string }) {
-    return this.jwt.sign({ sub: user.id, address: user.stellarAddress, role: user.role });
+  private signAccess(user: { id: string; stellarAddress: string; role: string; tenantId?: string }) {
+    return this.jwt.sign({ 
+      sub: user.id, 
+      address: user.stellarAddress, 
+      role: user.role,
+      tenantId: user.tenantId,
+    });
   }
 
   private async createRefreshToken(userId: string) {
@@ -120,5 +132,28 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  private async getDefaultTenantId(): Promise<string> {
+    const defaultTenant = await this.prisma.tenant.findUnique({
+      where: { slug: 'default' },
+    });
+
+    if (!defaultTenant) {
+      // Create default tenant if it doesn't exist
+      const tenant = await this.prisma.tenant.create({
+        data: {
+          name: 'Default Tenant',
+          slug: 'default',
+          status: 'ACTIVE',
+          feeBps: 250,
+          maxCreators: 1000,
+          maxPassesPerCreator: 100,
+        },
+      });
+      return tenant.id;
+    }
+
+    return defaultTenant.id;
   }
 }

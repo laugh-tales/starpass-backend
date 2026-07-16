@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TenantRequest } from '../common/middleware/tenant.middleware';
 
 class RefreshDto {
   @ApiProperty({ description: 'Refresh token issued at login' })
@@ -33,8 +34,8 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Login successful — returns access token and refresh token' })
   @ApiResponse({ status: 401, description: 'Invalid signature or challenge' })
   @ApiResponse({ status: 429, description: 'Too many requests, rate limit exceeded' })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.stellarAddress, dto.signature, dto.message);
+  login(@Body() dto: LoginDto, @Req() req: TenantRequest) {
+    return this.authService.login(dto.stellarAddress, dto.signature, dto.message, req.tenantId);
   }
 
   // refresh and logout are not auth-attack vectors; skip the strict auth throttlers

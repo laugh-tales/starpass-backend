@@ -233,10 +233,11 @@ export class PassesService {
       update: {},
       create: {
         stellarAddress: fanAddress,
+        tenantId: tier.tenantId,
         user: {
           connectOrCreate: {
             where: { stellarAddress: fanAddress },
-            create: { stellarAddress: fanAddress },
+            create: { stellarAddress: fanAddress, tenantId: tier.tenantId },
           },
         },
       },
@@ -263,6 +264,7 @@ export class PassesService {
 
     const pass = await db.pass.create({
       data: {
+        tenantId: tier.tenantId,
         onChainId,
         tierId: tier.id,
         creatorId: tier.creatorId,
@@ -291,6 +293,7 @@ export class PassesService {
 
       await db.earningsRecord.create({
         data: {
+          tenantId: tier.tenantId,
           creatorId: tier.creatorId,
           fanId: fan.id,
           tierId: tier.id,
@@ -387,10 +390,11 @@ export class PassesService {
       update: {},
       create: {
         stellarAddress: data.fanAddress,
+        tenantId: tier.tenantId,
         user: {
           connectOrCreate: {
             where: { stellarAddress: data.fanAddress },
-            create: { stellarAddress: data.fanAddress },
+            create: { stellarAddress: data.fanAddress, tenantId: tier.tenantId },
           },
         },
       },
@@ -413,6 +417,7 @@ export class PassesService {
 
       const pass = await this.prisma.pass.create({
         data: {
+          tenantId: tier.tenantId,
           onChainId: data.onChainId,
           tierId: tier.id,
           creatorId: creator.id,
@@ -437,6 +442,7 @@ export class PassesService {
 
         this.prisma.earningsRecord.create({
           data: {
+            tenantId: tier.tenantId,
             creatorId: creator.id,
             fanId: fan.id,
             tierId: tier.id,

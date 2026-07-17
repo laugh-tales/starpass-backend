@@ -18,6 +18,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { GraphqlAppModule } from './graphql/graphql.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { GraphqlAppModule } from './graphql/graphql.module';
     NotificationsModule,
     AdminModule,
     GraphqlAppModule,
+    SearchModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

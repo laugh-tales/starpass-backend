@@ -10,25 +10,47 @@ export class FansService {
   constructor(private prisma: PrismaService) { }
 
   /**
-   * Find a fan by their Stellar address along with their active passes.
+   * Find a fan by their Stellar address along with pass count and active subscriptions count.
    * 
    * @param stellarAddress The Stellar public key of the fan.
-   * @returns The fan record including their active passes, tiers, and creators.
+   * @returns The fan record including pass count and active subscriptions count.
    * @throws {NotFoundException} If the fan is not found.
    */
   async findByAddress(stellarAddress: string) {
     const fan = await this.prisma.fan.findUnique({
       where: { stellarAddress },
-      include: {
-        passes: {
-          where: { active: true, expiresAt: { gt: new Date() } },
-          include: { tier: true, creator: true },
-        },
-      },
     });
 
     if (!fan) throw new NotFoundException('Fan not found');
-    return fan;
+
+    const now = new Date();
+    const activePasses = await this.prisma.pass.count({
+      where: {
+        fanId: fan.id,
+        active: true,
+        expiresAt: { gt: now },
+      },
+    });
+
+    // Count distinct creators with active passes (active subscriptions)
+    const activeSubscriptions = await this.prisma.pass.groupBy({
+      by: ['creatorId'],
+      where: {
+        fanId: fan.id,
+        active: true,
+        expiresAt: { gt: now },
+      },
+    });
+
+    return {
+      id: fan.id,
+      stellarAddress: fan.stellarAddress,
+      displayName: fan.displayName,
+      createdAt: fan.createdAt,
+      updatedAt: fan.updatedAt,
+      passCount: activePasses,
+      activeSubscriptionsCount: activeSubscriptions.length,
+    };
   }
 
   /**

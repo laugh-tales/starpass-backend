@@ -50,12 +50,15 @@ describe('FansController (Integration)', () => {
   });
 
   describe('GET /fans/:address', () => {
-    it('should return fan profile', async () => {
+    it('should return fan profile with pass count and active subscriptions count', async () => {
       const expectedFan = {
-        ...mockFan,
+        id: mockFan.id,
+        stellarAddress: mockFan.stellarAddress,
+        displayName: mockFan.displayName,
         createdAt: mockFan.createdAt.toISOString(),
         updatedAt: mockFan.updatedAt.toISOString(),
-        passes: [],
+        passCount: 5,
+        activeSubscriptionsCount: 3,
       };
 
       mockFansService.findByAddress.mockResolvedValue(expectedFan);
@@ -71,7 +74,19 @@ describe('FansController (Integration)', () => {
     it('should return 404 when fan not found', async () => {
       mockFansService.findByAddress.mockRejectedValue(new NotFoundException('Fan not found'));
 
-      await request(app.getHttpServer()).get(`/fans/nonexistent-address`).expect(404);
+      await request(app.getHttpServer()).get(`/fans/GBRPYHIL2CI3FV4BMSXIOCNUTZ37NKPNCV63N7VBFQXNWLQRWV4V24F`).expect(404);
+    });
+
+    it('should return 400 for invalid Stellar address format', async () => {
+      await request(app.getHttpServer()).get(`/fans/invalid-address`).expect(400);
+    });
+
+    it('should return 400 for empty address', async () => {
+      await request(app.getHttpServer()).get(`/fans/`).expect(404);
+    });
+
+    it('should return 400 for malformed Stellar address', async () => {
+      await request(app.getHttpServer()).get(`/fans/NOTAVALIDSTELLARADDRESS1234567890`).expect(400);
     });
   });
 

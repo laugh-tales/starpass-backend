@@ -1,17 +1,31 @@
-import { Controller, Get, Post, Delete, Param, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { FansService } from './fans.service';
+import { StrKey } from '@stellar/stellar-sdk';
 
 @ApiTags('fans')
 @Controller({ path: 'fans', version: '1' })
 export class FansController {
   constructor(private fansService: FansService) { }
 
+  private validateStellarAddress(address: string): void {
+    if (!address || typeof address !== 'string') {
+      throw new BadRequestException('Invalid Stellar address format');
+    }
+    try {
+      StrKey.decodeEd25519PublicKey(address);
+    } catch (error) {
+      throw new BadRequestException('Invalid Stellar address format');
+    }
+  }
+
   @Get(':address')
   @ApiOperation({ summary: 'Get fan profile by Stellar address' })
   @ApiResponse({ status: 200, description: 'Return fan profile' })
   @ApiResponse({ status: 404, description: 'Fan not found' })
+  @ApiResponse({ status: 400, description: 'Invalid Stellar address format' })
   findOne(@Param('address') address: string) {
+    this.validateStellarAddress(address);
     return this.fansService.findByAddress(address);
   }
 

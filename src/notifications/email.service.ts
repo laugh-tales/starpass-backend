@@ -26,15 +26,18 @@ export class EmailService {
   ): Promise<void> {
     try {
       const fromEmail = this.configService.get<string>('FROM_EMAIL', 'noreply@starpass.com');
+      const safeFanAddress = this.escapeHtml(fanAddress);
+      const safeTierName = this.escapeHtml(tierName);
+      const safeAmount = this.escapeHtml(String(amount));
 
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>New Pass Purchased!</h2>
           <p>Great news! A fan has just purchased a pass from you.</p>
           <ul>
-            <li><strong>Fan Address:</strong> ${fanAddress}</li>
-            <li><strong>Tier:</strong> ${tierName}</li>
-            <li><strong>Amount:</strong> ${amount} USDC</li>
+            <li><strong>Fan Address:</strong> ${safeFanAddress}</li>
+            <li><strong>Tier:</strong> ${safeTierName}</li>
+            <li><strong>Amount:</strong> ${safeAmount} USDC</li>
           </ul>
           <p>Log in to your dashboard to view more details.</p>
         </div>
@@ -60,14 +63,16 @@ export class EmailService {
   ): Promise<void> {
     try {
       const fromEmail = this.configService.get<string>('FROM_EMAIL', 'noreply@starpass.com');
+      const safeTierName = this.escapeHtml(tierName);
+      const safeCreatorName = this.escapeHtml(creatorName);
 
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>A slot opened up on the waitlist!</h2>
           <p>Great news! A slot has become available for the tier you were waiting for.</p>
           <ul>
-            <li><strong>Tier:</strong> ${tierName}</li>
-            <li><strong>Creator:</strong> ${creatorName}</li>
+            <li><strong>Tier:</strong> ${safeTierName}</li>
+            <li><strong>Creator:</strong> ${safeCreatorName}</li>
           </ul>
           <p>Hurry! You have first priority to purchase this pass.</p>
         </div>
@@ -95,16 +100,20 @@ export class EmailService {
   ): Promise<void> {
     try {
       const fromEmail = this.configService.get<string>('FROM_EMAIL', 'noreply@starpass.com');
+      const safeFanAddress = this.escapeHtml(fanAddress);
+      const safeTierNames = this.escapeHtml(tierNames);
+      const safeTotalAmount = this.escapeHtml(String(totalAmount));
+      const safePassCount = this.escapeHtml(String(passCount));
 
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>New Bundle Purchased!</h2>
-          <p>Great news! A fan has just purchased a bundle of ${passCount} passes from you.</p>
+          <p>Great news! A fan has just purchased a bundle of ${safePassCount} passes from you.</p>
           <ul>
-            <li><strong>Fan Address:</strong> ${fanAddress}</li>
-            <li><strong>Tiers:</strong> ${tierNames}</li>
-            <li><strong>Total Amount:</strong> ${totalAmount} USDC</li>
-            <li><strong>Pass Count:</strong> ${passCount}</li>
+            <li><strong>Fan Address:</strong> ${safeFanAddress}</li>
+            <li><strong>Tiers:</strong> ${safeTierNames}</li>
+            <li><strong>Total Amount:</strong> ${safeTotalAmount} USDC</li>
+            <li><strong>Pass Count:</strong> ${safePassCount}</li>
           </ul>
           <p>Log in to your dashboard to view more details.</p>
         </div>

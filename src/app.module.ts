@@ -18,6 +18,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { GraphqlAppModule } from './graphql/graphql.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { GraphqlAppModule } from './graphql/graphql.module';
         limit: 100,
       },
     ]),
+    QueueModule,
     AuthModule,
     CreatorsModule,
     CategoriesModule,

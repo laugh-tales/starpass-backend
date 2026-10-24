@@ -5,7 +5,10 @@ import { PrismaService } from '../common/prisma.service';
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.category.findMany({ orderBy: { name: 'asc' } });
+  findAll(tenantId?: string) {
+    return this.prisma.category.findMany({
+      where: tenantId ? { tenantId } : undefined,
+      orderBy: { name: 'asc' },
+    });
   }
 }

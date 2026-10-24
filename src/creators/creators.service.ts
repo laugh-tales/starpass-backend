@@ -33,9 +33,12 @@ export class CreatorsService {
    *
    * @returns Featured creator records.
    */
-  async findFeatured() {
+  async findFeatured(tenantId?: string) {
     return this.prisma.creator.findMany({
-      where: { featured: true },
+      where: { 
+        featured: true,
+        ...(tenantId && { tenantId }),
+      },
       orderBy: { featuredOrder: 'asc' },
     });
   }
@@ -48,10 +51,13 @@ export class CreatorsService {
    * @param category Optional category slug filter.
    * @returns Paginated creator list with total count.
    */
-  async findAll(page: number, limit: number, category?: string) {
+  async findAll(page: number, limit: number, category?: string, tenantId?: string) {
     const skip = (page - 1) * limit;
     const categorySlug = category ? slugify(category) : undefined;
-    const where = categorySlug ? { categories: { some: { slug: categorySlug } } } : undefined;
+    const where = {
+      ...(categorySlug && { categories: { some: { slug: categorySlug } } }),
+      ...(tenantId && { tenantId }),
+    };
     const [creators, total] = await Promise.all([
       this.prisma.creator.findMany({
         where,
@@ -89,14 +95,40 @@ export class CreatorsService {
    * @param stellarAddress The creator's Stellar public key.
    * @returns The newly created creator record.
    */
-  async register(userId: string, dto: CreateCreatorDto, stellarAddress: string) {
+  async register(userId: string, dto: CreateCreatorDto, stellarAddress: string, tenantId?: string) {
+    // Get tenantId from user if not provided
+    if (!tenantId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { tenantId: true },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      tenantId = user.tenantId;
+    }
+
+    // Check tenant limits
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { maxCreators: true },
+    });
+
+    if (tenant) {
+      const creatorCount = await this.prisma.creator.count({
+        where: { tenantId },
+      });
+
+      if (creatorCount >= tenant.maxCreators) {
+        throw new BadRequestException('Maximum number of creators reached for this tenant');
+      }
+    }
+
     return this.prisma.creator.create({
       data: {
         stellarAddress,
         displayName: dto.displayName,
         bio: dto.bio,
         avatarUrl: dto.avatarUrl,
-
+        tenantId,
         registeredAt: new Date(),
         user: { connect: { id: userId } },
       },

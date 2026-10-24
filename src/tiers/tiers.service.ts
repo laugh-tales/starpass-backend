@@ -70,6 +70,7 @@ export class TiersService {
       for (const dto of dtos) {
         const tier = await tx.tier.create({
           data: {
+            tenantId: creator.tenantId,
             onChainId: dto.onChainId,
             creatorId: creator.id,
             name: dto.name,
@@ -202,6 +203,7 @@ export class TiersService {
         syncedAt: new Date(),
       },
       create: {
+        tenantId: creator.tenantId,
         onChainId: data.onChainId,
         creatorId: creator.id,
         name: data.name,

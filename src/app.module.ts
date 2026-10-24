@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { AuthModule } from './auth/auth.module';
 import { CreatorsModule } from './creators/creators.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -18,6 +19,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { GraphqlAppModule } from './graphql/graphql.module';
+import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
   imports: [
@@ -53,6 +55,7 @@ import { GraphqlAppModule } from './graphql/graphql.module';
     NotificationsModule,
     AdminModule,
     GraphqlAppModule,
+    TenantsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -62,7 +65,7 @@ import { GraphqlAppModule } from './graphql/graphql.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(RequestLoggerMiddleware)
+      .apply(RequestLoggerMiddleware, TenantMiddleware)
       .exclude('health', 'health/(.*)')
       .forRoutes('*');
   }
